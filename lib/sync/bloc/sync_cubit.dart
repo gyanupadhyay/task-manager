@@ -73,9 +73,15 @@ class SyncCubit extends Cubit<SyncState> {
 
   @override
   Future<void> close() async {
-    await _connectivitySub?.cancel();
-    await _localWatchSub?.cancel();
-    await _remoteWatchSub?.cancel();
+    // None of these are awaited: cancel() stops further callbacks
+    // synchronously, which is all teardown needs. Several of these
+    // subscriptions are backed by native platform-channel listeners
+    // (connectivity_plus's EventChannel, cloud_firestore's snapshot
+    // listener), and awaiting their cancel() future ties teardown to a
+    // native round-trip that can hang indefinitely (observed mid sign-out).
+    unawaited(_connectivitySub?.cancel());
+    unawaited(_localWatchSub?.cancel());
+    unawaited(_remoteWatchSub?.cancel());
     return super.close();
   }
 }

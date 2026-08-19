@@ -71,7 +71,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthSignOutRequested event,
     Emitter<AuthState> emit,
   ) async {
-    await _authRepository.signOut();
+    emit(const AuthLoading());
+    try {
+      await disposeUserScopedDependencies();
+      await _authRepository.signOut();
+      // Resulting AuthUnauthenticated state arrives via the authStateChanges subscription.
+    } catch (_) {
+      emit(const AuthUnauthenticated(errorMessage: 'Sign-out failed. Please try again.'));
+    }
   }
 
   @override
