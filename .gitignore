@@ -50,5 +50,9 @@ app.*.map.json
 /ios/Runner/GoogleService-Info.plist
 /lib/firebase_options.dart
 
+# OneSignal App ID + REST API key — project-specific and secret (the REST
+# key can send to this app's whole audience), see README.
+/lib/core/notifications/onesignal_config.dart
+
 # Claude Code local tooling (not part of the app)
 .claude/

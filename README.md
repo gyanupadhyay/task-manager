@@ -53,7 +53,14 @@ The UI never talks to Firestore or Hive directly — everything goes through `Ta
    - Enable **Google** as an Authentication sign-in provider.
    - Deploy the included security rules: `firebase deploy --only firestore:rules`.
    - For Android, add your debug/release SHA-1 fingerprints to the Firebase project (required for Google Sign-In) and re-download `google-services.json`.
-4. Run:
+4. This repo also does not include OneSignal config (project-specific and gitignored, for the same reason). Copy the template and fill in your own values:
+   ```
+   cp lib/core/notifications/onesignal_config.example.dart lib/core/notifications/onesignal_config.dart
+   ```
+   - Create a free app at [onesignal.com](https://onesignal.com), platform **Google Android (FCM)**.
+   - In the Firebase console for the same project: Project settings > Service accounts > **Generate new private key**, and upload that JSON to OneSignal when it asks for Android/Firebase credentials.
+   - Copy the **App ID** and **REST API Key** from OneSignal's Settings > Keys & IDs into `onesignal_config.dart`.
+5. Run:
    ```
    flutter run
    ```
@@ -73,4 +80,4 @@ Unit tests cover the `Task` model's JSON/Firestore round-trip and the offline-sy
 
 Core spec: complete. Bonus: Firebase Auth, dark mode, and unit tests are done; advanced offline sync (LWW merge + pending queue) is in place.
 
-**FCM notifications: client-side only, no active sender.** The app requests notification permission, registers each device's FCM token to `users/{uid}.fcmToken`, and would display any foreground push as a local notification — but nothing currently sends one. A due-date reminder feature needs a server-side trigger (e.g. a scheduled Cloud Function reading Firestore and pushing via the Admin SDK) to be reliable: an on-device scheduled-alarm approach was tried and dropped, since several Android OEM skins (ColorOS, MIUI, etc.) kill background alarm receivers before they can post the notification, regardless of permissions granted. Building the Cloud Function requires upgrading the Firebase project off the free Spark plan to Blaze (pay-as-you-go) — not done here.
+**Due-date reminders: OneSignal, scheduled directly from the client.** Creating or editing a task with a due date calls OneSignal's REST API to schedule a push 30 minutes before it's due, targeted at the signed-in user's Firebase uid (`OneSignal.login`); completing, deleting, or rescheduling a task cancels/replaces it (`ReminderService`, `ReminderIdStore`). There's no backend — OneSignal itself holds and delivers the notification server-side at the scheduled time, which is what makes this reliable where the earlier approach wasn't: an on-device scheduled-alarm implementation was tried first and dropped, since several Android OEM skins (ColorOS, MIUI, etc.) kill background alarm receivers before they can post the notification, regardless of permissions granted. The tradeoff is that the OneSignal REST API key is embedded client-side (no server to hold it server-side instead), so it's extractable from the built APK; rotate it in the OneSignal dashboard if that's ever abused.

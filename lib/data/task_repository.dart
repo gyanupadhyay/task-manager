@@ -1,5 +1,6 @@
 import 'dart:async' show unawaited;
 
+import '../core/notifications/reminder_service.dart';
 import '../models/priority.dart';
 import '../models/sync_status.dart';
 import '../models/task.dart';
@@ -9,19 +10,26 @@ import 'sync/sync_service.dart';
 
 /// Single API the UI layer uses for task data. Reads/writes always go to
 /// Hive first (so the app works offline); pushing to Firestore is delegated
-/// to [SyncService] and never blocks the caller.
+/// to [SyncService] and never blocks the caller. Due-date reminders are
+/// scheduled/canceled through [ReminderService] alongside each mutation.
 class TaskRepository {
   TaskRepository({
     required LocalTaskSource local,
     required FirestoreTaskSource remote,
     required SyncService syncService,
+    required ReminderService reminders,
+    required String uid,
   })  : _local = local,
         _remote = remote,
-        _syncService = syncService;
+        _syncService = syncService,
+        _reminders = reminders,
+        _uid = uid;
 
   final LocalTaskSource _local;
   final FirestoreTaskSource _remote;
   final SyncService _syncService;
+  final ReminderService _reminders;
+  final String _uid;
 
   List<Task> getAllTasks() => _local.getAll();
 
@@ -63,6 +71,7 @@ class TaskRepository {
     );
     await _local.put(task);
     _pushInBackground();
+    unawaited(_reminders.scheduleForTask(task, uid: _uid));
     return task;
   }
 
@@ -85,12 +94,18 @@ class TaskRepository {
     );
     await _local.put(updated);
     _pushInBackground();
+    if (updated.isCompleted) {
+      unawaited(_reminders.cancelForTask(updated.id));
+    } else {
+      unawaited(_reminders.scheduleForTask(updated, uid: _uid));
+    }
     return updated;
   }
 
   Future<void> toggleCompleted(Task task) => updateTask(task, isCompleted: !task.isCompleted);
 
   Future<void> deleteTask(Task task) async {
+    unawaited(_reminders.cancelForTask(task.id));
     if (task.syncStatus == SyncStatus.pendingCreate) {
       // Never left Firestore in the first place; safe to drop locally.
       await _local.delete(task.id);

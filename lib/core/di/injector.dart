@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:get_it/get_it.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:hive/hive.dart';
@@ -22,15 +21,18 @@ import '../../features/tasks/bloc/task_list/task_list_bloc.dart';
 import '../../models/task.dart';
 import '../../sync/bloc/sync_cubit.dart';
 import '../network/dio_client.dart';
-import '../notifications/fcm_service.dart';
-import '../notifications/local_notification_service.dart';
+import '../notifications/onesignal_service.dart';
+import '../notifications/reminder_id_store.dart';
+import '../notifications/reminder_service.dart';
 
 final getIt = GetIt.instance;
 
 const userScopeName = 'user';
 
 /// App-wide singletons that live for the whole process lifetime.
-void configureAppDependencies() {
+Future<void> configureAppDependencies() async {
+  final reminderIdsBox = await Hive.openBox<String>('reminder_ids');
+
   getIt
     ..registerLazySingleton<FirebaseAuth>(() => FirebaseAuth.instance)
     ..registerLazySingleton<GoogleSignIn>(() => GoogleSignIn.instance)
@@ -47,10 +49,11 @@ void configureAppDependencies() {
     ..registerLazySingleton<AuthBloc>(
       () => AuthBloc(authRepository: getIt())..add(const AuthSubscriptionRequested()),
     )
-    ..registerLazySingleton<FirebaseMessaging>(() => FirebaseMessaging.instance)
-    ..registerLazySingleton<LocalNotificationService>(LocalNotificationService.new)
-    ..registerLazySingleton<FcmService>(
-      () => FcmService(messaging: getIt(), localNotifications: getIt()),
+    ..registerLazySingleton<OneSignalService>(OneSignalService.new)
+    ..registerLazySingleton<Box<String>>(() => reminderIdsBox)
+    ..registerLazySingleton<ReminderIdStore>(() => ReminderIdStore(getIt()))
+    ..registerLazySingleton<ReminderService>(
+      () => ReminderService(dio: getIt(), idStore: getIt()),
     );
 }
 
@@ -75,7 +78,13 @@ Future<void> configureUserScopedDependencies(String uid) async {
           () => SyncService(local: scoped(), remote: scoped()),
         )
         ..registerLazySingleton<TaskRepository>(
-          () => TaskRepository(local: scoped(), remote: scoped(), syncService: scoped()),
+          () => TaskRepository(
+            local: scoped(),
+            remote: scoped(),
+            syncService: scoped(),
+            reminders: scoped(),
+            uid: uid,
+          ),
         )
         ..registerLazySingleton<SyncCubit>(
           () => SyncCubit(
@@ -95,13 +104,14 @@ Future<void> configureUserScopedDependencies(String uid) async {
           dispose: (cubit) => cubit.close(),
         );
 
-      unawaited(getIt<FcmService>().registerTokenForUser(scoped<FirebaseFirestore>(), uid));
+      unawaited(getIt<OneSignalService>().loginUser(uid));
     },
   );
 }
 
 Future<void> disposeUserScopedDependencies() async {
   if (getIt.currentScopeName == userScopeName) {
+    await getIt<OneSignalService>().logoutUser();
     await getIt.popScope();
   }
 }
