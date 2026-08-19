@@ -71,7 +71,12 @@ class SearchFilterBar extends StatelessWidget {
                   final isActive = state.sortMode != TaskSortMode.dueDate;
                   return PopupMenuButton<TaskSortMode>(
                     tooltip: AppStrings.sortLabel,
-                    onSelected: context.read<TaskFilterCubit>().sortChanged,
+                    onOpened: () => FocusManager.instance.primaryFocus?.unfocus(),
+                    onSelected: (value) {
+                      context.read<TaskFilterCubit>().sortChanged(value);
+                      FocusManager.instance.primaryFocus?.unfocus();
+                    },
+                    onCanceled: () => FocusManager.instance.primaryFocus?.unfocus(),
                     color: theme.cardTheme.color,
                     elevation: 6,
                     borderRadius: BorderRadius.circular(20),

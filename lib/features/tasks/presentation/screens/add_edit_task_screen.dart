@@ -108,6 +108,7 @@ class _AddEditTaskViewState extends State<_AddEditTaskView> {
                 const SizedBox(height: 8),
                 OutlinedButton.icon(
                   onPressed: () async {
+                    FocusManager.instance.primaryFocus?.unfocus();
                     final now = DateTime.now();
                     final pickedDate = await showDatePicker(
                       context: context,
@@ -115,7 +116,9 @@ class _AddEditTaskViewState extends State<_AddEditTaskView> {
                       firstDate: DateTime(now.year - 1),
                       lastDate: DateTime(now.year + 5),
                     );
-                    if (pickedDate == null || !context.mounted) return;
+                    if (!context.mounted) return;
+                    FocusManager.instance.primaryFocus?.unfocus();
+                    if (pickedDate == null) return;
 
                     final initialTime = state.dueDate != null
                         ? TimeOfDay.fromDateTime(state.dueDate!)
@@ -126,6 +129,7 @@ class _AddEditTaskViewState extends State<_AddEditTaskView> {
                       helpText: 'Due time',
                     );
                     if (!context.mounted) return;
+                    FocusManager.instance.primaryFocus?.unfocus();
                     final time = pickedTime ?? initialTime;
 
                     cubit.dueDateChanged(DateTime(
