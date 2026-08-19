@@ -9,6 +9,7 @@ An offline-first Flutter task manager backed by Cloud Firestore, with Hive as th
 - **Offline-first sync:** local-write-first data flow, a pending-sync queue, and a live sync indicator (offline / syncing / N pending / synced).
 - **Auth:** Google Sign-In via Firebase Auth, scoping each user's tasks to `users/{uid}/tasks` with matching Firestore security rules.
 - **Dark mode:** full light/dark theming, following the system setting.
+- **Due-date reminders:** a push notification 30 minutes before a task is due, scheduled/canceled via OneSignal as tasks are created, edited, completed, or deleted (`ReminderService`). See Status for how this is wired.
 - **Tests:** unit tests for the `Task` model's JSON/Firestore round-trip and the offline-sync merge rules.
 
 ## Stack
@@ -19,13 +20,14 @@ An offline-first Flutter task manager backed by Cloud Firestore, with Hive as th
 - **Local storage:** Hive, with a hand-written `TypeAdapter` (no build_runner/codegen)
 - **Remote:** Cloud Firestore (`users/{uid}/tasks/{taskId}`), Firebase Auth (Google Sign-In)
 - **Connectivity:** connectivity_plus (interface-level changes) + internet_connection_checker_plus (actual reachability probe)
-- **HTTP:** Dio, configured as a general-purpose client (not currently used — Firestore/Auth go through their own SDKs)
+- **HTTP:** Dio, general-purpose client — Firestore/Auth go through their own SDKs, but `ReminderService` uses it to call OneSignal's REST API
+- **Push notifications:** onesignal_flutter (device registration + identity), OneSignal's REST API (scheduling/canceling reminders) — see Status
 
 ## Architecture
 
 ```
 lib/
-  core/        theme, centralized strings, DI setup, validators, Dio client
+  core/        theme, centralized strings, DI setup, validators, Dio client, notifications (OneSignal)
   models/      Task, Priority — fromJson/toJson, toFirestore/fromFirestore
   data/        LocalTaskSource (Hive), FirestoreTaskSource, SyncService, TaskRepository
   sync/        SyncCubit — drives the sync indicator off connectivity + Hive watch
@@ -34,7 +36,7 @@ lib/
   routing/     go_router config
 ```
 
-The UI never talks to Firestore or Hive directly — everything goes through `TaskRepository`, which writes to Hive first and pushes to Firestore in the background. A local-only `syncStatus` field tracks what's still owed to Firestore; a last-write-wins merge (`RemoteSnapshotMerger`) reconciles local and remote state on every sync.
+The UI never talks to Firestore or Hive directly — everything goes through `TaskRepository`, which writes to Hive first and pushes to Firestore in the background. A local-only `syncStatus` field tracks what's still owed to Firestore; a last-write-wins merge (`RemoteSnapshotMerger`) reconciles local and remote state on every sync. The same repository also drives due-date reminders: every create/update/delete calls `ReminderService` (`core/notifications/`) to schedule or cancel a OneSignal push, independent of the Firestore sync path.
 
 ## Setup
 
@@ -78,6 +80,6 @@ Unit tests cover the `Task` model's JSON/Firestore round-trip and the offline-sy
 
 ## Status
 
-Core spec: complete. Bonus: Firebase Auth, dark mode, and unit tests are done; advanced offline sync (LWW merge + pending queue) is in place.
+Core spec: complete. Bonus: Firebase Auth, dark mode, unit tests, and due-date reminders are done; advanced offline sync (LWW merge + pending queue) is in place.
 
 **Due-date reminders: OneSignal, scheduled directly from the client.** Creating or editing a task with a due date calls OneSignal's REST API to schedule a push 30 minutes before it's due, targeted at the signed-in user's Firebase uid (`OneSignal.login`); completing, deleting, or rescheduling a task cancels/replaces it (`ReminderService`, `ReminderIdStore`). There's no backend — OneSignal itself holds and delivers the notification server-side at the scheduled time, which is what makes this reliable where the earlier approach wasn't: an on-device scheduled-alarm implementation was tried first and dropped, since several Android OEM skins (ColorOS, MIUI, etc.) kill background alarm receivers before they can post the notification, regardless of permissions granted. The tradeoff is that the OneSignal REST API key is embedded client-side (no server to hold it server-side instead), so it's extractable from the built APK; rotate it in the OneSignal dashboard if that's ever abused.
