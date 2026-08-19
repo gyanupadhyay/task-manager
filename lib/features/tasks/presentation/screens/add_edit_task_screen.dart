@@ -109,17 +109,38 @@ class _AddEditTaskViewState extends State<_AddEditTaskView> {
                 OutlinedButton.icon(
                   onPressed: () async {
                     final now = DateTime.now();
-                    final picked = await showDatePicker(
+                    final pickedDate = await showDatePicker(
                       context: context,
                       initialDate: state.dueDate ?? now,
                       firstDate: DateTime(now.year - 1),
                       lastDate: DateTime(now.year + 5),
                     );
-                    if (picked != null) cubit.dueDateChanged(picked);
+                    if (pickedDate == null || !context.mounted) return;
+
+                    final initialTime = state.dueDate != null
+                        ? TimeOfDay.fromDateTime(state.dueDate!)
+                        : const TimeOfDay(hour: 9, minute: 0);
+                    final pickedTime = await showTimePicker(
+                      context: context,
+                      initialTime: initialTime,
+                      helpText: 'Due time',
+                    );
+                    if (!context.mounted) return;
+                    final time = pickedTime ?? initialTime;
+
+                    cubit.dueDateChanged(DateTime(
+                      pickedDate.year,
+                      pickedDate.month,
+                      pickedDate.day,
+                      time.hour,
+                      time.minute,
+                    ));
                   },
                   icon: const Icon(Icons.event_outlined),
                   label: Text(
-                    state.dueDate == null ? AppStrings.fieldDueDate : DateFormatting.date(state.dueDate!),
+                    state.dueDate == null
+                        ? AppStrings.fieldDueDate
+                        : DateFormatting.dateTime(state.dueDate!),
                   ),
                 ),
                 if (state.dueDateError != null) ...[

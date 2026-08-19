@@ -71,7 +71,6 @@ class SearchFilterBar extends StatelessWidget {
                   final isActive = state.sortMode != TaskSortMode.dueDate;
                   return PopupMenuButton<TaskSortMode>(
                     tooltip: AppStrings.sortLabel,
-                    initialValue: state.sortMode,
                     onSelected: context.read<TaskFilterCubit>().sortChanged,
                     color: theme.cardTheme.color,
                     elevation: 6,
@@ -132,21 +131,30 @@ class _SortMenuItem extends PopupMenuItem<TaskSortMode> {
   }) : super(
           value: value,
           height: 44,
-          child: Row(
-            children: [
-              Icon(icon, size: 18, color: selected ? AppColors.primary : null),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    color: selected ? AppColors.primary : null,
-                    fontWeight: selected ? FontWeight.w600 : null,
+          padding: EdgeInsets.zero,
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: selected ? AppColors.primary.withValues(alpha: 0.12) : null,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, size: 18, color: selected ? AppColors.primary : null),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: selected ? AppColors.primary : null,
+                      fontWeight: selected ? FontWeight.w600 : null,
+                    ),
                   ),
                 ),
-              ),
-              if (selected) const Icon(Icons.check_rounded, size: 18, color: AppColors.primary),
-            ],
+                if (selected) const Icon(Icons.check_rounded, size: 18, color: AppColors.primary),
+              ],
+            ),
           ),
         );
 }

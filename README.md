@@ -71,4 +71,6 @@ Unit tests cover the `Task` model's JSON/Firestore round-trip and the offline-sy
 
 ## Status
 
-Core spec: complete. Bonus: Firebase Auth, dark mode, and unit tests are done; advanced offline sync (LWW merge + pending queue) is in place. FCM notifications are not implemented.
+Core spec: complete. Bonus: Firebase Auth, dark mode, and unit tests are done; advanced offline sync (LWW merge + pending queue) is in place.
+
+**FCM notifications: client-side only, no active sender.** The app requests notification permission, registers each device's FCM token to `users/{uid}.fcmToken`, and would display any foreground push as a local notification — but nothing currently sends one. A due-date reminder feature needs a server-side trigger (e.g. a scheduled Cloud Function reading Firestore and pushing via the Admin SDK) to be reliable: an on-device scheduled-alarm approach was tried and dropped, since several Android OEM skins (ColorOS, MIUI, etc.) kill background alarm receivers before they can post the notification, regardless of permissions granted. Building the Cloud Function requires upgrading the Firebase project off the free Spark plan to Blaze (pay-as-you-go) — not done here.

@@ -22,12 +22,12 @@ class SyncStatusIndicator extends StatelessWidget {
               children: [
                 if (state.phase == SyncPhase.syncing)
                   SizedBox(
-                    width: 14,
-                    height: 14,
+                    width: 16,
+                    height: 16,
                     child: CircularProgressIndicator(strokeWidth: 2, color: color),
                   )
                 else
-                  Icon(icon, size: 16, color: color),
+                  Icon(icon, size: 18, color: color),
                 if (state.pendingCount > 0 && state.phase != SyncPhase.syncing) ...[
                   const SizedBox(width: 4),
                   Text(

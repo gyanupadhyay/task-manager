@@ -67,7 +67,7 @@ class _TaskDetailBody extends StatelessWidget {
           const SizedBox(height: 24),
         ],
         _DetailRow(label: AppStrings.status, value: task.isCompleted ? AppStrings.statusCompleted : AppStrings.statusPending),
-        _DetailRow(label: AppStrings.due, value: DateFormatting.date(task.dueDate)),
+        _DetailRow(label: AppStrings.due, value: DateFormatting.dateTime(task.dueDate)),
         _DetailRow(label: AppStrings.created, value: DateFormatting.dateTime(task.createdAt)),
         const SizedBox(height: 32),
         FilledButton.icon(
