@@ -1,10 +1,19 @@
 # Task Manager
 
-A Flutter task manager with Firebase Cloud Firestore as the remote data source and Hive as an offline-first local cache. Tasks are created/edited/deleted locally first (so the app is always usable, online or not) and synced to Firestore in the background whenever connectivity is available.
+An offline-first Flutter task manager backed by Cloud Firestore, with Hive as the local cache. Every create/edit/delete/complete lands in Hive first — the app is fully usable with no network — and syncs to Firestore in the background whenever connectivity is available, with automatic last-write-wins reconciliation on reconnect.
+
+## Features
+
+- **Tasks:** create, edit, delete, mark complete/pending, view details. Each task has an id, title, description, priority (low/medium/high), due date, completion status, and created date.
+- **Search & filter:** search by title, filter by All/Pending/Completed, sort by due date or priority — all computed locally, no Firestore reads on every keystroke.
+- **Offline-first sync:** local-write-first data flow, a pending-sync queue, and a live sync indicator (offline / syncing / N pending / synced).
+- **Auth:** Google Sign-In via Firebase Auth, scoping each user's tasks to `users/{uid}/tasks` with matching Firestore security rules.
+- **Dark mode:** full light/dark theming, following the system setting.
+- **Tests:** unit tests for the `Task` model's JSON/Firestore round-trip and the offline-sync merge rules.
 
 ## Stack
 
-- **State management:** flutter_bloc (Bloc/Cubit)
+- **State management:** flutter_bloc (Bloc/Cubit) — business logic lives in blocs/cubits/repository, not widgets
 - **DI:** get_it, with a get_it *scope* for everything that depends on the signed-in user's uid — pushed on sign-in, popped on sign-out
 - **Navigation:** go_router, auth-gated via a redirect driven by `AuthBloc`
 - **Local storage:** Hive, with a hand-written `TypeAdapter` (no build_runner/codegen)
@@ -49,6 +58,8 @@ The UI never talks to Firestore or Hive directly — everything goes through `Ta
    flutter run
    ```
 
+Android is the actively developed/tested target. iOS needs `flutterfire configure` rerun from macOS (it wires up Xcode-side config that isn't available cross-platform).
+
 ## Testing
 
 ```
@@ -57,3 +68,7 @@ flutter test
 ```
 
 Unit tests cover the `Task` model's JSON/Firestore round-trip and the offline-sync last-write-wins merge rules (`RemoteSnapshotMerger`).
+
+## Status
+
+Core spec: complete. Bonus: Firebase Auth, dark mode, and unit tests are done; advanced offline sync (LWW merge + pending queue) is in place. FCM notifications are not implemented.
