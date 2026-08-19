@@ -28,12 +28,20 @@ class TaskRepository {
   Task? getTask(String id) => _local.getById(id);
 
   /// Reactive task list, driven purely by the local Hive box.
+  ///
+  /// Excludes [SyncStatus.pendingDelete] tasks: they're kept in Hive until
+  /// the background sync confirms the remote delete, but the UI should
+  /// already treat them as gone (otherwise a just-dismissed [Dismissible]
+  /// reappears with the same key and Flutter throws).
   Stream<List<Task>> watchTasks() async* {
-    yield _local.getAll();
+    yield _visibleTasks();
     await for (final _ in _local.watch()) {
-      yield _local.getAll();
+      yield _visibleTasks();
     }
   }
+
+  List<Task> _visibleTasks() =>
+      _local.getAll().where((t) => t.syncStatus != SyncStatus.pendingDelete).toList();
 
   Future<Task> createTask({
     required String title,

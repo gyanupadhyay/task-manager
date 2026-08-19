@@ -15,7 +15,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       : _authRepository = authRepository,
         super(const AuthInitial()) {
     on<AuthSubscriptionRequested>(_onSubscriptionRequested);
-    on<_AuthUserChanged>(_onUserChanged);
+    // Must run strictly in order: a fast sign-out-then-sign-in emits a null
+    // user followed by the new user in quick succession, and the default
+    // concurrent transformer would let their get_it scope pop/push (and the
+    // underlying Hive box close/open) race each other.
+    on<_AuthUserChanged>(_onUserChanged, transformer: _sequential());
     on<AuthSignInRequested>(_onSignInRequested);
     on<AuthSignOutRequested>(_onSignOutRequested);
   }
@@ -76,3 +80,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     return super.close();
   }
 }
+
+/// Processes events one at a time, in order, waiting for each handler to
+/// finish before starting the next — unlike bloc's default transformer,
+/// which runs handlers concurrently.
+EventTransformer<E> _sequential<E>() => (events, mapper) => events.asyncExpand(mapper);

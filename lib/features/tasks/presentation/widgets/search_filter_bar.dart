@@ -74,6 +74,7 @@ class SearchFilterBar extends StatelessWidget {
                     onSelected: context.read<TaskFilterCubit>().sortChanged,
                     color: theme.cardTheme.color,
                     elevation: 6,
+                    borderRadius: BorderRadius.circular(20),
                     shadowColor: Colors.black.withValues(alpha: isDark ? 0.5 : 0.15),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -133,7 +134,6 @@ class _SortMenuItem extends PopupMenuItem<TaskSortMode> {
           height: 44,
           padding: EdgeInsets.zero,
           child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
               color: selected ? AppColors.primary.withValues(alpha: 0.12) : null,
@@ -157,6 +157,36 @@ class _SortMenuItem extends PopupMenuItem<TaskSortMode> {
             ),
           ),
         );
+
+  @override
+  PopupMenuItemState<TaskSortMode, _SortMenuItem> createState() => _SortMenuItemState();
+}
+
+class _SortMenuItemState extends PopupMenuItemState<TaskSortMode, _SortMenuItem> {
+  @override
+  Widget build(BuildContext context) {
+    return MergeSemantics(
+      child: buildSemantics(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: widget.height),
+            child: Material(
+              color: Colors.transparent,
+              clipBehavior: Clip.antiAlias,
+              borderRadius: BorderRadius.circular(12),
+              child: InkWell(
+                onTap: widget.enabled ? handleTap : null,
+                splashColor: AppColors.primary.withValues(alpha: 0.18),
+                highlightColor: AppColors.primary.withValues(alpha: 0.08),
+                child: Align(alignment: Alignment.centerLeft, child: buildChild()),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _FilterChip extends StatelessWidget {
